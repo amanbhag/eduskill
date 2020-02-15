@@ -15,6 +15,9 @@ const Grid = require('gridfs-stream');
 const methodOverride = require('method-override');
 const crypto  = require('crypto');
 
+// Appointment Schema
+const Appointments = require('../models/appointment');
+
 // Databse Setup
 
 const MONGO = "mongodb://root:abc123@ds259210.mlab.com:59210/panther404"
@@ -334,7 +337,7 @@ router.get('/course/:id',isLoggedIn,(req,res,next)=>{
       res.render('error')
     }else{
       var message = req.flash('success')
-      res.render('user/course',{message:message,course:course,list:course.available_course,comment:course.comment,url:req.headers.host+url.parse(req.url).pathname})
+      res.render('user/course',{id:course._id,message:message,course:course,list:course.available_course,comment:course.comment,url:req.headers.host+url.parse(req.url).pathname})
       }
   })
 })
@@ -420,6 +423,67 @@ router.post('/search',isLoggedIn,(req,res,next)=>{
       })
     }
   })
+})
+
+// Route for Booking Apointment
+router.post('/appointment/:id',isLoggedIn, async(req,res) => {
+const {fullname,date,number} = req.body;
+try {
+  let newApponintment = await new Appointments({
+    fullname,
+    date,
+    number
+  })
+
+  const output = `
+        <hr>
+          <center><a href="http://eduskill.herokuapp.com/"></a></center>
+          <h1> Student Name : ${fullname} </h1>
+          <h1> Contact Number : ${number} </h1>
+          <h1> Date  : ${date} </h1>
+        <hr>
+    `;
+
+  // create reusable transporter object using the default SMTP transport
+  let transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: 'badboysecurities@gmail.com', // EduSkill Email ID
+      pass: 'LaW6rXvEguCHB2V' // EduSkill Password
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+  let sender = 'badboysecurities@gmail.com';
+  // send mail with defined transport object
+  transporter.sendMail({
+    from: `"EduSkill - Toppers of Education" 👻 <contact@eduskill.com>`,
+    to: "amanbhagtani@gmail.com", // list of receivers
+    subject: `You have new Appoinment from : , ${req.body.fullname}`, // Subject line
+    html: output // html body
+  });
+
+  newApponintment.save();
+  Course.findOne({_id : req.params.id},function(err,course){
+    if(err){
+      res.render('error')
+    }
+    if(course==null){
+      res.render('error')
+    }else{
+      var message = req.flash('success','Appointment is Booked !!')
+      res.render('user/course',{id:course._id,message:message,course:course,list:course.available_course,comment:course.comment,url:req.headers.host+url.parse(req.url).pathname})
+      }
+  })
+
+  console.log(newApponintment)
+} catch (err) {
+   req.flash('success','Something Went Wrong.. Please Try Again');
+      es.redirect('/course/'+req.params.id)
+}
 })
 
 
